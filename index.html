@@ -7,98 +7,148 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
         :root { --ur: #ff4500; --hr: #ff8c00; --ssr: #ffd700; --sr: #a020f0; --r: #1e90ff; --n: #8b8b8b; }
-        body { background: #1a1a1a; color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        .pokedex-bg { background: #e3350d; width: 100%; text-align: center; padding: 15px 0; border-bottom: 6px solid #b32100; box-shadow: 0 4px 10px rgba(0,0,0,0.5); position: sticky; top: 0; z-index: 100; }
-        .card-container { margin-top: 30px; perspective: 1000px; }
-        .card { width: 280px; height: 400px; border-radius: 15px; border: 8px solid #fff; background: #333; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.8); overflow: hidden; transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
+        body { background: #0a0a0a; color: white; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; }
+        
+        /* 顶部状态 */
+        .header { background: #e3350d; width: 100%; text-align: center; padding: 10px 0; border-bottom: 4px solid #333; z-index: 100; }
+
+        /* 游戏舞台 */
+        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; position: relative; perspective: 1000px; }
+
+        /* 卡包样式 */
+        .booster-pack {
+            width: 320px; height: 180px; background: #e3350d; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); cursor: pointer;
+            position: absolute; z-index: 50; border: 4px solid #fff;
+            transition: transform 0.3s; transform-style: preserve-3d;
+        }
+        .booster-pack::after { content: "SWIPE RIGHT >>>"; color: #fff; font-weight: bold; font-size: 20px; animation: blink 1s infinite; }
+        
+        /* 撕开动画效果 */
+        .pack-tear { animation: tearOut 0.8s forwards; }
+        @keyframes tearOut {
+            0% { transform: scale(1) rotate(0); }
+            50% { transform: scale(1.1) rotate(5deg); filter: brightness(2); }
+            100% { transform: scale(0) rotate(-20deg); opacity: 0; }
+        }
+
+        /* 横向卡片样式 (5:4 比例) */
+        .card {
+            width: 350px; height: 280px; background: #333; border-radius: 12px;
+            border: 6px solid #fff; position: relative; display: none;
+            box-shadow: 0 0 40px rgba(255,255,255,0.2);
+            overflow: hidden; animation: cardPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes cardPop {
+            0% { transform: scale(0) rotate(-10deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+
         .card-img { width: 100%; height: 100%; object-fit: cover; }
-        .rarity-badge { position: absolute; top: 10px; right: 15px; font-size: 32px; font-weight: 900; text-shadow: 2px 2px 0 #000; font-style: italic; z-index: 10; }
-        .draw-btn { margin: 25px 0; background: #ffcc00; color: #333; border: none; padding: 15px 60px; font-size: 20px; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 5px 0 #b89600; }
-        .draw-btn:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
-        .info-box { padding: 15px; background: #222; border-radius: 12px; width: 85%; max-width: 320px; border: 1px solid #444; min-height: 100px; }
+        .rarity-badge { position: absolute; top: 10px; right: 15px; font-size: 36px; font-weight: 900; text-shadow: 2px 2px 0 #000; font-style: italic; }
+
+        /* 按钮 */
+        .draw-btn { margin-bottom: 40px; background: #ffcc00; border: none; padding: 15px 40px; font-size: 18px; font-weight: bold; border-radius: 30px; box-shadow: 0 5px 0 #b89600; cursor: pointer; }
+        .draw-btn:disabled { background: #555; box-shadow: none; opacity: 0.5; }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
-    <div class="pokedex-bg">
-        <h2 style="margin:0;">PONY INDEX</h2>
-        <div id="counter" style="font-size:12px; margin-top:5px;">正在同步记忆数据库...</div>
+    <div class="header">
+        <h2 style="margin:0;">PONY TCG</h2>
+        <div id="counter" style="font-size:12px;">正在初始化卡包...</div>
     </div>
-    <div class="card-container">
+
+    <div class="stage">
+        <div id="pack" class="booster-pack" style="display:none;"></div>
         <div id="card" class="card">
-            <img id="cardImage" class="card-img" src="https://raw.githubusercontent.com/charlotteweng/couple-card-images/main/back.png">
+            <img id="cardImage" class="card-img" src="">
             <div id="badge" class="rarity-badge"></div>
         </div>
     </div>
-    <div class="info-box">
-        <h3 id="cardName" style="margin:0 0 8px 0; color: #ffcc00;">???</h3>
-        <p id="cardDesc" style="font-size:14px; color:#ddd; margin:0;">请先等待数据加载完成</p>
+
+    <div id="info" style="margin-bottom:10px; text-align:center; min-height:40px;">
+        <h3 id="cardName" style="margin:0; color:#ffcc00;"></h3>
     </div>
-    <button id="drawBtn" class="draw-btn" disabled>加载中...</button>
+
+    <button id="drawBtn" class="draw-btn" onclick="preparePack()">抽一张卡！</button>
 
     <script>
         let cardPool = [];
+        let startX = 0;
 
-        // 核心：直接从你的 GitHub 抓取 CSV 内容
-        async function initGame() {
+        // 初始化加载 CSV
+        async function init() {
             try {
-                const csvUrl = 'cards.csv'; // 同仓库路径
-                const response = await fetch(csvUrl);
+                const response = await fetch('cards.csv');
                 const text = await response.text();
-                
-                // 解析 CSV (兼容换行和逗号)
                 const rows = text.split('\n').filter(r => r.trim() !== '');
                 cardPool = rows.slice(1).map(row => {
-                    // 处理 CSV 里的引号和内容
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    return {
-                        id: cols[0].trim(),
-                        name: cols[1].trim(),
-                        rarity: cols[2].trim(),
-                        desc: cols[3].trim(),
-                        img: cols[4] ? cols[4].trim() : ''
-                    };
+                    return { id: cols[0].trim(), name: cols[1].trim(), rarity: cols[2].trim(), desc: cols[3].trim(), img: cols[4].trim() };
                 });
+                document.getElementById('counter').innerText = `图鉴剩余: ${cardPool.length} 张`;
+            } catch (e) { alert("CSV加载失败，请检查文件"); }
+        }
 
-                document.getElementById('counter').innerText = `已成功同步 ${cardPool.length} 份记忆`;
-                document.getElementById('cardDesc').innerText = "记忆已就绪，快去提取吧！";
-                const btn = document.getElementById('drawBtn');
-                btn.innerText = "提取记忆";
-                btn.disabled = false;
-            } catch (err) {
-                document.getElementById('counter').innerText = "数据载入失败，请检查 CSV 文件";
-                console.error(err);
+        // 1. 点击按钮，卡包出现
+        function preparePack() {
+            document.getElementById('drawBtn').disabled = true;
+            document.getElementById('card').style.display = 'none';
+            document.getElementById('cardName').innerText = "";
+            
+            const pack = document.getElementById('pack');
+            pack.style.display = 'flex';
+            pack.className = 'booster-pack'; // 重置动画
+        }
+
+        // 2. 滑动交互逻辑
+        const packEl = document.getElementById('pack');
+        packEl.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+        packEl.addEventListener('mousedown', e => startX = e.clientX);
+
+        packEl.addEventListener('touchend', e => handleSwipe(e.changedTouches[0].clientX));
+        packEl.addEventListener('mouseup', e => handleSwipe(e.clientX));
+
+        function handleSwipe(endX) {
+            if (endX - startX > 50) { // 向右滑动超过50px
+                tearPack();
             }
         }
 
-        function draw() {
-            if (cardPool.length === 0) return;
-            const btn = document.getElementById('drawBtn');
-            btn.disabled = true;
+        // 3. 撕开动画并展示卡片
+        function tearPack() {
+            const pack = document.getElementById('pack');
+            pack.classList.add('pack-tear');
 
-            const cardBox = document.getElementById('card');
-            cardBox.style.transform = "scale(0.8) rotateY(720deg)";
-            
             setTimeout(() => {
-                const res = cardPool[Math.floor(Math.random() * cardPool.length)];
-                
-                // 更新页面内容
-                document.getElementById('cardImage').src = res.img;
-                document.getElementById('badge').innerText = res.rarity;
-                document.getElementById('badge').style.color = `var(--${res.rarity.toLowerCase()})`;
-                document.getElementById('cardName').innerText = res.name;
-                document.getElementById('cardDesc').innerText = res.desc;
-
-                cardBox.style.transform = "scale(1) rotateY(0deg)";
-                
-                if(['UR','HR','SSR'].includes(res.rarity)) {
-                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-                }
-                btn.disabled = false;
-            }, 600);
+                pack.style.display = 'none';
+                showCard();
+            }, 800);
         }
 
-        document.getElementById('drawBtn').onclick = draw;
-        initGame();
+        function showCard() {
+            const res = cardPool[Math.floor(Math.random() * cardPool.length)];
+            const cardBox = document.getElementById('card');
+            
+            document.getElementById('cardImage').src = res.img;
+            document.getElementById('badge').innerText = res.rarity;
+            document.getElementById('badge').style.color = `var(--${res.rarity.toLowerCase()})`;
+            document.getElementById('cardName').innerText = `【${res.rarity}】${res.name}`;
+            
+            cardBox.style.display = 'block';
+
+            // 稀有度特殊效果
+            if(['UR','HR','SSR'].includes(res.rarity)) {
+                confetti({ particleCount: 200, spread: 90, origin: { y: 0.5 } });
+            }
+
+            document.getElementById('drawBtn').disabled = false;
+        }
+
+        init();
     </script>
 </body>
 </html>
