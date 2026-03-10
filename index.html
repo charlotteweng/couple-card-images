@@ -7,182 +7,153 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
         :root { --ur: #ff4500; --ssr: #ffd700; --sr: #a020f0; --r: #1e90ff; --n: #8b8b8b; }
-        body { background: #121212; color: white; font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; touch-action: none; }
+        body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; touch-action: none; }
         
-        /* 舞台区域 */
-        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; perspective: 1500px; position: relative; }
+        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
 
-        /* 卡包容器 */
-        .pack-wrapper {
-            width: 260px; height: 400px; position: relative; cursor: pointer;
-            transform-style: preserve-3d; z-index: 50; display: none;
-        }
-
-        /* 卡包封面 - 左右两半 */
-        .pack-half {
-            position: absolute; top: 0; height: 100%; width: 50%;
-            /* 修正空格路径，使用 encodeURIComponent 格式 */
+        /* 卡包：不再分左右两半，直接一张图，简单暴力 */
+        #packContainer {
+            width: 280px; height: 440px; 
             background-image: url('https://raw.githubusercontent.com/charlotteweng/couple-card-images/main/Package%20Cover.png');
-            background-size: 260px 400px; background-color: #e3350d; /* 兜底红色 */
-            border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        }
-        .pack-left { left: 0; background-position: left; border-radius: 15px 0 0 15px; }
-        .pack-right { right: 0; background-position: right; border-radius: 0 15px 15px 0; transform-origin: left center; }
-
-        /* 镭射闪光层 */
-        .holographic {
-            position: absolute; inset: 0; z-index: 10; pointer-events: none;
-            background: linear-gradient(135deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 80%);
-            mix-blend-mode: overlay; opacity: 0.6; border-radius: 15px;
+            background-size: 100% 100%; border-radius: 15px;
+            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+            cursor: pointer; display: none; position: relative; z-index: 10;
         }
 
-        /* 撕开的光芒 */
-        .tear-glow {
-            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-            width: 0px; height: 380px; background: #fff; filter: blur(30px); opacity: 0; z-index: 40;
+        /* 撕开时的金光 */
+        .flash {
+            position: absolute; inset: 0; background: white; border-radius: 15px;
+            opacity: 0; transition: opacity 0.2s; z-index: 11;
         }
 
-        /* 纵向卡牌布局 */
+        /* 镭射层：让卡包亮闪闪 */
+        .holo {
+            position: absolute; inset: 0; border-radius: 15px;
+            background: linear-gradient(135deg, transparent 20%, rgba(255,255,255,0.4) 50%, transparent 80%);
+            background-size: 200% 200%; mix-blend-mode: overlay; pointer-events: none;
+        }
+
+        /* 纵向卡牌：经典的宝可梦布局 */
         .card {
-            width: 300px; height: 460px; background: #fff; border-radius: 15px;
+            width: 310px; height: 480px; background: #fff; border-radius: 18px;
             border: 8px solid #fff; position: absolute; display: none;
-            box-shadow: 0 0 40px rgba(0,0,0,0.5); color: #333;
-            transform: scale(0) rotate(-5deg); transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 100; overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8); color: #222;
+            z-index: 20; overflow: hidden; transform: scale(0);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .card.reveal { display: block; transform: scale(1) rotate(0); }
-        .card-img-area { width: 100%; height: 220px; background: #eee; overflow: hidden; border-bottom: 2px solid #eee; }
+        .card.reveal { display: block; transform: scale(1); }
+        .card-img-area { width: 100%; height: 240px; background: #eee; border-bottom: 2px solid #eee; }
         .card-img { width: 100%; height: 100%; object-fit: cover; }
         .card-info { padding: 15px; }
-        .card-title { font-size: 22px; font-weight: bold; margin-bottom: 5px; color: #111; display: flex; justify-content: space-between; }
-        .card-desc { font-size: 14px; color: #555; line-height: 1.5; padding-top: 10px; border-top: 1px dashed #ccc; }
+        .card-title { font-size: 22px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .card-desc { font-size: 14px; color: #555; line-height: 1.5; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc; }
 
-        /* 按钮 */
-        .draw-btn { margin-bottom: 50px; background: #ffcc00; border: none; padding: 15px 50px; font-size: 18px; font-weight: bold; border-radius: 40px; cursor: pointer; z-index: 200; box-shadow: 0 6px 0 #b89600; }
+        .draw-btn { margin-bottom: 60px; background: #ffcc00; border: none; padding: 18px 60px; font-size: 20px; font-weight: bold; border-radius: 50px; cursor: pointer; z-index: 100; box-shadow: 0 6px 0 #b89600; }
         .draw-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b89600; }
-        
-        #counter { position: absolute; top: 20px; font-size: 12px; color: #666; }
-    </script>
+    </style>
 </head>
 <body>
-    <div id="counter">正在载入记忆卡包...</div>
+
     <div class="stage">
-        <div id="glow" class="tear-glow"></div>
-        <div id="packWrapper" class="pack-wrapper">
-            <div class="holographic"></div>
-            <div class="pack-half pack-left"></div>
-            <div id="packRight" class="pack-half pack-right"></div>
+        <div id="packContainer" onclick="tearEffect()">
+            <div class="holo"></div>
+            <div id="flashOverlay" class="flash"></div>
+            <div style="position:absolute; bottom:20px; width:100%; text-align:center; color:white; font-weight:bold; text-shadow:0 2px 4px #000;">向右滑动撕开</div>
         </div>
+
         <div id="card" class="card">
             <div class="card-img-area"><img id="cardImage" src=""></div>
             <div class="card-info">
                 <div class="card-title">
-                    <span id="cardName">???</span>
-                    <span id="cardBadge" style="font-style:italic;"></span>
+                    <span id="cardName">名称</span>
+                    <span id="cardBadge" style="font-style:italic; font-size:28px;"></span>
                 </div>
-                <div id="cardDesc" class="card-desc"></div>
+                <div id="cardDesc" class="card-desc">描述加载中...</div>
             </div>
         </div>
     </div>
-    <button id="drawBtn" class="draw-btn" onclick="spawnPack()">抽一张卡！</button>
+
+    <button id="drawBtn" class="draw-btn" onclick="showPack()">抽一张卡！</button>
 
     <script>
+        // 自动使用你上传的 CSV 数据逻辑
         let cardPool = [];
-        let isDragging = false;
-        let startX = 0;
-
-        // 1. 加载数据
-        async function init() {
+        async function loadCSV() {
             try {
-                const response = await fetch('cards.csv');
-                if (!response.ok) throw new Error('CSV not found');
-                const text = await response.text();
-                const rows = text.split('\n').filter(r => r.trim() !== '');
+                const r = await fetch('cards.csv');
+                const t = await r.text();
+                const rows = t.trim().split('\n').filter(line => line.includes(','));
                 cardPool = rows.slice(1).map(row => {
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    return { id: cols[0], name: cols[1], rarity: cols[2], desc: cols[3], img: cols[4] };
+                    const c = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    return { id: c[0], name: c[1], rarity: c[2], desc: c[3], img: c[4].trim() };
                 });
-                document.getElementById('counter').innerText = `已连接: ${cardPool.length} 份记忆`;
-            } catch (e) {
-                document.getElementById('counter').innerText = "数据载入失败，请确认 cards.csv 在根目录";
-            }
+                document.getElementById('drawBtn').innerText = "提取记忆卡包";
+            } catch(e) { console.error("数据加载失败"); }
         }
 
-        // 2. 准备卡包
-        function spawnPack() {
+        // 1. 显示卡包
+        function showPack() {
             document.getElementById('drawBtn').style.display = 'none';
             document.getElementById('card').classList.remove('reveal');
-            const wrapper = document.getElementById('packWrapper');
-            wrapper.style.display = 'block';
-            wrapper.style.opacity = '1';
-            wrapper.style.transform = 'scale(1)';
-            document.getElementById('packRight').style.transform = 'rotateY(0)';
-            document.getElementById('glow').style.opacity = '0';
+            const pack = document.getElementById('packContainer');
+            pack.style.display = 'block';
+            pack.style.transform = 'scale(1)';
+            pack.style.opacity = '1';
         }
 
-        // 3. 滑动判定逻辑
-        const wrapper = document.getElementById('packWrapper');
-        const packRight = document.getElementById('packRight');
-        const glow = document.getElementById('glow');
+        // 2. 撕开效果逻辑（支持滑动）
+        let startX = 0;
+        const pack = document.getElementById('packContainer');
+        
+        pack.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+        pack.addEventListener('touchend', e => {
+            if (e.changedTouches[0].clientX - startX > 50) tearEffect();
+        });
+        pack.addEventListener('mousedown', e => startX = e.clientX);
+        pack.addEventListener('mouseup', e => {
+            if (e.clientX - startX > 50) tearEffect();
+        });
 
-        function start(x) { isDragging = true; startX = x; }
-        function move(x) {
-            if (!isDragging) return;
-            let diff = x - startX;
-            if (diff < 0) diff = 0;
+        function tearEffect() {
+            const flash = document.getElementById('flashOverlay');
+            flash.style.opacity = '1'; // 白光闪烁
             
-            // 限制最大旋转
-            const rot = Math.min(diff / 1.5, 130);
-            packRight.style.transform = `rotateY(${-rot}deg)`;
-            glow.style.opacity = Math.min(diff / 150, 1);
-            glow.style.width = (diff / 1.5) + 'px';
-
-            if (diff > 180) finish();
-        }
-
-        wrapper.addEventListener('mousedown', e => start(e.clientX));
-        window.addEventListener('mousemove', e => move(e.clientX));
-        window.addEventListener('mouseup', () => isDragging = false);
-
-        wrapper.addEventListener('touchstart', e => start(e.touches[0].clientX));
-        window.addEventListener('touchmove', e => move(e.touches[0].clientX));
-        window.addEventListener('touchend', () => isDragging = false);
-
-        function finish() {
-            if (!isDragging && packRight.style.transform === 'rotateY(0deg)') return;
-            isDragging = false;
-            wrapper.style.transition = 'opacity 0.4s, transform 0.4s';
-            wrapper.style.opacity = '0';
-            wrapper.style.transform = 'scale(1.2)';
             setTimeout(() => {
-                wrapper.style.display = 'none';
-                wrapper.style.transition = '';
-                showCard();
-            }, 400);
+                pack.style.transform = 'scale(1.2) rotate(5deg)';
+                pack.style.opacity = '0';
+                setTimeout(() => {
+                    pack.style.display = 'none';
+                    flash.style.opacity = '0';
+                    renderCard();
+                }, 300);
+            }, 150);
         }
 
-        function showCard() {
+        // 3. 展示卡片
+        function renderCard() {
             const res = cardPool[Math.floor(Math.random() * cardPool.length)];
             document.getElementById('cardImage').src = res.img;
             document.getElementById('cardName').innerText = res.name;
             document.getElementById('cardDesc').innerText = res.desc;
-            const badge = document.getElementById('cardBadge');
-            badge.innerText = res.rarity;
-            badge.style.color = `var(--${res.rarity.toLowerCase()})`;
+            const b = document.getElementById('cardBadge');
+            b.innerText = res.rarity;
+            b.style.color = res.rarity === 'UR' ? '#ff4500' : (res.rarity === 'SSR' ? '#ffd700' : '#1e90ff');
 
-            document.getElementById('card').classList.add('reveal');
+            const cardEl = document.getElementById('card');
+            cardEl.classList.add('reveal');
             
             if(['UR','HR','SSR'].includes(res.rarity)) {
                 confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 } });
             }
+
             setTimeout(() => {
-                const b = document.getElementById('drawBtn');
-                b.style.display = 'block';
-                b.innerText = "继续提取";
-            }, 1500);
+                const btn = document.getElementById('drawBtn');
+                btn.style.display = 'block';
+                btn.innerText = "再抽一包";
+            }, 1200);
         }
 
-        init();
+        loadCSV();
     </script>
 </body>
 </html>
