@@ -6,167 +6,42 @@
     <title>PONY TCG POCKET</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --ur: #ff4500; --ssr: #ffd700; --n: #8b8b8b; }
-        body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; }
+        :root { --ur: #ff4500; --ssr: #ffd700; --sr: #a020f0; --r: #1e90ff; --n: #8b8b8b; }
+        body { background: #121212; color: white; font-family: -apple-system, sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; }
         
-        /* 游戏舞台 */
-        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; perspective: 1200px; position: relative; }
+        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; perspective: 1500px; position: relative; }
 
-        /* 卡包外壳容器 */
+        /* 卡包容器：纵向比例 */
         .pack-wrapper {
-            width: 340px; height: 200px; position: relative; cursor: grab;
-            transform-style: preserve-3d; transition: transform 0.1s;
+            width: 260px; height: 400px; position: relative; cursor: grab;
+            transform-style: preserve-3d; z-index: 50;
         }
 
-        /* 镭射材质层 */
+        /* 镭射层 */
         .holographic {
             position: absolute; inset: 0; z-index: 10; pointer-events: none;
-            background: linear-gradient(125deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 45%, rgba(100,200,255,0.3) 50%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0) 100%);
-            background-size: 200% 200%; mix-blend-mode: color-dodge; opacity: 0.6;
+            background: linear-gradient(135deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 80%);
+            background-size: 200% 200%; mix-blend-mode: overlay; opacity: 0.5; border-radius: 15px;
         }
 
-        /* 卡包半边基类 */
+        /* 卡包半边：左和右 */
         .pack-half {
             position: absolute; top: 0; height: 100%; width: 50%;
-            background-image: url('https://raw.githubusercontent.com/charlotteweng/couple-card-images/main/pack_cover.jpg'); /* 建议你传那张封面图并命名 */
-            background-size: 340px 200px; border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            background-image: url('https://raw.githubusercontent.com/charlotteweng/couple-card-images/main/Package%20Cover.png');
+            background-size: 260px 400px; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
         }
-        .pack-left { left: 0; background-position: left; border-radius: 10px 0 0 10px; z-index: 5; }
-        .pack-right { right: 0; background-position: right; border-radius: 0 10px 10px 0; z-index: 6; transform-origin: left center; transition: transform 0.05s linear; }
+        .pack-left { left: 0; background-position: left; border-radius: 15px 0 0 15px; }
+        .pack-right { right: 0; background-position: right; border-radius: 0 15px 15px 0; transform-origin: left center; }
 
-        /* 撕开时的缝隙光芒 */
+        /* 撕开的光芒 */
         .tear-glow {
             position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-            width: 10px; height: 160px; background: #fff; filter: blur(20px);
-            box-shadow: 0 0 50px #fff; opacity: 0; z-index: 4;
+            width: 0px; height: 350px; background: #fff; filter: blur(30px); opacity: 0; z-index: 40;
         }
 
-        /* 横版卡片样式 (5:4) */
+        /* 经典纵向卡牌 (类似宝可梦卡) */
         .card {
-            width: 320px; height: 256px; background: #222; border-radius: 12px;
-            border: 6px solid #fff; position: absolute; display: none;
-            z-index: 2; transform: scale(0) rotate(-5deg); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .card.reveal { display: block; transform: scale(1) rotate(0); }
-        .card-img { width: 100%; height: 100%; object-fit: cover; }
-
-        .draw-btn { margin-bottom: 50px; background: #ffcc00; border: none; padding: 15px 50px; font-size: 18px; font-weight: bold; border-radius: 40px; cursor: pointer; z-index: 100; }
-    </style>
-</head>
-<body>
-    <div class="stage">
-        <div id="glow" class="tear-glow"></div>
-
-        <div id="packWrapper" class="pack-wrapper" style="display:none;">
-            <div class="holographic" id="holo"></div>
-            <div class="pack-half pack-left"></div>
-            <div class="pack-half pack-right" id="packRight"></div>
-        </div>
-
-        <div id="card" class="card">
-            <img id="cardImage" class="card-img" src="">
-            <div id="badge" style="position:absolute; top:10px; right:15px; font-size:32px; font-weight:900; font-style:italic;"></div>
-        </div>
-    </div>
-
-    <button id="drawBtn" class="draw-btn" onclick="spawnPack()">抽一张卡！</button>
-
-    <script>
-        let cardPool = [];
-        let isDragging = false;
-        let startX = 0;
-        const THRESHOLD = 180; // 撕开的临界值
-
-        async function init() {
-            const response = await fetch('cards.csv');
-            const text = await response.text();
-            const rows = text.split('\n').filter(r => r.trim() !== '');
-            cardPool = rows.slice(1).map(row => {
-                const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                return { id: cols[0].trim(), name: cols[1].trim(), rarity: cols[2].trim(), img: cols[4].trim() };
-            });
-            document.getElementById('drawBtn').disabled = false;
-        }
-
-        function spawnPack() {
-            document.getElementById('drawBtn').style.display = 'none';
-            document.getElementById('card').classList.remove('reveal');
-            const wrapper = document.getElementById('packWrapper');
-            wrapper.style.display = 'block';
-            wrapper.style.transform = 'scale(1)';
-            document.getElementById('packRight').style.transform = 'rotateY(0)';
-            document.getElementById('glow').style.opacity = '0';
-        }
-
-        // 滑动监听
-        const wrapper = document.getElementById('packWrapper');
-        const rightHalf = document.getElementById('packRight');
-        const glow = document.getElementById('glow');
-
-        const startAction = (x) => { isDragging = true; startX = x; wrapper.style.cursor = 'grabbing'; };
-        const moveAction = (x) => {
-            if (!isDragging) return;
-            let diff = x - startX;
-            if (diff < 0) diff = 0;
-            
-            // 跟手撕开效果：计算旋转角度和位移
-            const rotate = Math.min(diff / 2, 110); 
-            rightHalf.style.transform = `rotateY(${-rotate}deg) translateX(${diff/2}px)`;
-            
-            // 缝隙光芒随距离变亮
-            glow.style.opacity = Math.min(diff / 100, 1);
-            glow.style.width = (diff / 2) + 'px';
-
-            // 镭射层随滑动闪动
-            document.getElementById('holo').style.backgroundPosition = `${diff}px ${diff}px`;
-
-            if (diff > THRESHOLD) finishTear();
-        };
-
-        wrapper.addEventListener('mousedown', e => startAction(e.clientX));
-        window.addEventListener('mousemove', e => moveAction(e.clientX));
-        window.addEventListener('mouseup', () => isDragging = false);
-
-        wrapper.addEventListener('touchstart', e => startAction(e.touches[0].clientX));
-        window.addEventListener('touchmove', e => moveAction(e.touches[0].clientX));
-        window.addEventListener('touchend', () => isDragging = false);
-
-        function finishTear() {
-            isDragging = false;
-            // 播放撕包完成动画
-            wrapper.style.transition = 'all 0.4s';
-            wrapper.style.transform = 'scale(1.2) translateY(-50px)';
-            wrapper.style.opacity = '0';
-            
-            setTimeout(() => {
-                wrapper.style.display = 'none';
-                wrapper.style.transition = 'none';
-                showCard();
-            }, 400);
-        }
-
-        function showCard() {
-            const res = cardPool[Math.floor(Math.random() * cardPool.length)];
-            const cardEl = document.getElementById('card');
-            document.getElementById('cardImage').src = res.img;
-            const badge = document.getElementById('badge');
-            badge.innerText = res.rarity;
-            badge.style.color = res.rarity === 'UR' ? '#ff4500' : (res.rarity === 'SSR' ? '#ffd700' : '#1e90ff');
-
-            cardEl.classList.add('reveal');
-            
-            if(['UR','HR','SSR'].includes(res.rarity)) {
-                confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-            }
-
-            setTimeout(() => {
-                document.getElementById('drawBtn').style.display = 'block';
-                document.getElementById('drawBtn').innerText = "再抽一包！";
-            }, 1000);
-        }
-
-        init();
-    </script>
-</body>
-</html>
+            width: 300px; height: 450px; background: #fdfdfd; border-radius: 15px;
+            border: 8px solid #fff; position: absolute; display: none;
+            box-shadow: 0 0 50px
