@@ -13,11 +13,11 @@
         
         body { 
             background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
-            color: #334155; font-family: -apple-system, "Helvetica Neue", sans-serif; 
+            color: #334155; font-family: -apple-system, sans-serif; 
             margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; touch-action: none; 
         }
         
-        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; position: relative; perspective: 1000px; }
+        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
 
         .swipe-hint {
             position: absolute; top: -50px; width: 100%; text-align: center;
@@ -35,13 +35,7 @@
             border: 4px solid #fff;
         }
 
-        .holo {
-            position: absolute; inset: 0; border-radius: 11px;
-            background: linear-gradient(135deg, transparent 20%, rgba(255,255,255,0.4) 50%, transparent 80%);
-            mix-blend-mode: overlay; pointer-events: none;
-        }
-
-        /* --- 核心修复：卡片布局 --- */
+        /* --- 修正后的卡片布局 --- */
         .card {
             width: 320px; height: 480px; background: #fff; border-radius: 16px;
             border: 6px solid #fff; position: absolute; display: none;
@@ -51,42 +45,45 @@
         }
         .card.reveal { display: block; transform: scale(1); }
 
-        /* 1. 锁定图片容器为 5:4 比例 */
-        .card-img-container {
-            width: 280px; height: 224px; /* 宽度 280 * 0.8 = 224 */
-            margin: 15px auto 10px; border-radius: 8px; 
-            overflow: hidden; background: #f8fafc;
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid #f1f5f9;
+        /* 5:4 比例容器：核心修复点 */
+        .card-img-wrapper {
+            width: 284px; /* 留一点边距 */
+            margin: 15px auto 10px;
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #eee;
+            /* 下面这两行强制锁定 5:4 比例 (高度 = 宽度 * 0.8) */
+            height: 0;
+            padding-top: 227.2px; /* 284 * 0.8 */
         }
 
-        /* 2. 核心：object-fit 改为 contain 确保图片显示全 */
         .card-img { 
+            position: absolute;
+            top: 0; left: 0;
             width: 100%; height: 100%; 
-            object-fit: contain; /* 不裁剪，完整显示 */
-            background-color: #fff;
+            object-fit: cover; /* 自动填充并居中，不会拉伸 */
+            object-position: center;
         }
 
-        .card-content { padding: 0 20px; text-align: left; }
+        .card-content { padding: 0 18px; }
         .card-header { 
             display: flex; justify-content: space-between; align-items: center; 
-            padding-bottom: 8px; border-bottom: 2px solid #f1f5f9; 
+            padding-bottom: 5px; border-bottom: 2px solid #f1f5f9; 
         }
-        .card-name { font-size: 20px; font-weight: 800; color: #0f172a; }
-        .card-rarity { font-style: italic; font-weight: 900; font-size: 26px; }
+        .card-name { font-size: 19px; font-weight: 800; color: #0f172a; }
+        .card-rarity { font-style: italic; font-weight: 900; font-size: 24px; }
         
-        /* 3. 优化描述文字排版 */
         .card-body { 
-            margin-top: 12px; font-size: 14px; color: #64748b; 
-            line-height: 1.5; height: 90px; overflow-y: auto; 
+            margin-top: 10px; font-size: 14px; color: #64748b; 
+            line-height: 1.5; height: 100px; overflow-y: auto; 
         }
 
         .draw-btn { 
             margin-bottom: 60px; background: #0ea5e9; color: white; border: none; 
             padding: 16px 50px; font-size: 18px; font-weight: bold; border-radius: 50px; 
-            cursor: pointer; z-index: 100; box-shadow: 0 4px 0 #0284c7; transition: 0.2s;
+            cursor: pointer; z-index: 100; box-shadow: 0 4px 0 #0284c7;
         }
-        .draw-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0284c7; }
     </style>
 </head>
 <body>
@@ -98,8 +95,8 @@
         </div>
 
         <div id="card" class="card">
-            <div class="card-img-container">
-                <img id="cardImage" src="" alt="card image">
+            <div class="card-img-wrapper">
+                <img id="cardImage" class="card-img" src="" alt="card image">
             </div>
             <div class="card-content">
                 <div class="card-header">
@@ -138,7 +135,6 @@
             pack.style.display = 'block';
             pack.style.opacity = '1';
             pack.style.transform = 'scale(1)';
-            pack.style.transition = 'none'; // 重置动画状态
         }
 
         let startX = 0;
@@ -175,12 +171,7 @@
             cardEl.classList.add('reveal');
             
             if(['UR','HR','SSR'].includes(res.rarity)) {
-                confetti({ 
-                    particleCount: 200, 
-                    spread: 80, 
-                    origin: { y: 0.6 },
-                    colors: ['#ff4500', '#ffd700', '#ffffff'] 
-                });
+                confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 } });
             }
 
             setTimeout(() => {
