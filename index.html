@@ -3,149 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小马的闪光图鉴</title>
+    <title>PONY TCG POCKET</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --ur: #ff4500; --hr: #ff8c00; --ssr: #ffd700; --sr: #a020f0; --r: #1e90ff; --n: #8b8b8b; }
-        body { background: #0a0a0a; color: white; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; }
+        :root { --ur: #ff4500; --ssr: #ffd700; --n: #8b8b8b; }
+        body { background: #000; color: white; font-family: sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; }
         
-        /* 顶部状态 */
-        .header { background: #e3350d; width: 100%; text-align: center; padding: 10px 0; border-bottom: 4px solid #333; z-index: 100; }
-
         /* 游戏舞台 */
-        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; position: relative; perspective: 1000px; }
+        .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; perspective: 1200px; position: relative; }
 
-        /* 卡包样式 */
-        .booster-pack {
-            width: 320px; height: 180px; background: #e3350d; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8); cursor: pointer;
-            position: absolute; z-index: 50; border: 4px solid #fff;
-            transition: transform 0.3s; transform-style: preserve-3d;
-        }
-        .booster-pack::after { content: "SWIPE RIGHT >>>"; color: #fff; font-weight: bold; font-size: 20px; animation: blink 1s infinite; }
-        
-        /* 撕开动画效果 */
-        .pack-tear { animation: tearOut 0.8s forwards; }
-        @keyframes tearOut {
-            0% { transform: scale(1) rotate(0); }
-            50% { transform: scale(1.1) rotate(5deg); filter: brightness(2); }
-            100% { transform: scale(0) rotate(-20deg); opacity: 0; }
+        /* 卡包外壳容器 */
+        .pack-wrapper {
+            width: 340px; height: 200px; position: relative; cursor: grab;
+            transform-style: preserve-3d; transition: transform 0.1s;
         }
 
-        /* 横向卡片样式 (5:4 比例) */
+        /* 镭射材质层 */
+        .holographic {
+            position: absolute; inset: 0; z-index: 10; pointer-events: none;
+            background: linear-gradient(125deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 45%, rgba(100,200,255,0.3) 50%, rgba(255,255,255,0.2) 55%, rgba(255,255,255,0) 100%);
+            background-size: 200% 200%; mix-blend-mode: color-dodge; opacity: 0.6;
+        }
+
+        /* 卡包半边基类 */
+        .pack-half {
+            position: absolute; top: 0; height: 100%; width: 50%;
+            background-image: url('https://raw.githubusercontent.com/charlotteweng/couple-card-images/main/pack_cover.jpg'); /* 建议你传那张封面图并命名 */
+            background-size: 340px 200px; border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .pack-left { left: 0; background-position: left; border-radius: 10px 0 0 10px; z-index: 5; }
+        .pack-right { right: 0; background-position: right; border-radius: 0 10px 10px 0; z-index: 6; transform-origin: left center; transition: transform 0.05s linear; }
+
+        /* 撕开时的缝隙光芒 */
+        .tear-glow {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            width: 10px; height: 160px; background: #fff; filter: blur(20px);
+            box-shadow: 0 0 50px #fff; opacity: 0; z-index: 4;
+        }
+
+        /* 横版卡片样式 (5:4) */
         .card {
-            width: 350px; height: 280px; background: #333; border-radius: 12px;
-            border: 6px solid #fff; position: relative; display: none;
-            box-shadow: 0 0 40px rgba(255,255,255,0.2);
-            overflow: hidden; animation: cardPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            width: 320px; height: 256px; background: #222; border-radius: 12px;
+            border: 6px solid #fff; position: absolute; display: none;
+            z-index: 2; transform: scale(0) rotate(-5deg); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        @keyframes cardPop {
-            0% { transform: scale(0) rotate(-10deg); }
-            100% { transform: scale(1) rotate(0); }
-        }
-
+        .card.reveal { display: block; transform: scale(1) rotate(0); }
         .card-img { width: 100%; height: 100%; object-fit: cover; }
-        .rarity-badge { position: absolute; top: 10px; right: 15px; font-size: 36px; font-weight: 900; text-shadow: 2px 2px 0 #000; font-style: italic; }
 
-        /* 按钮 */
-        .draw-btn { margin-bottom: 40px; background: #ffcc00; border: none; padding: 15px 40px; font-size: 18px; font-weight: bold; border-radius: 30px; box-shadow: 0 5px 0 #b89600; cursor: pointer; }
-        .draw-btn:disabled { background: #555; box-shadow: none; opacity: 0.5; }
-
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .draw-btn { margin-bottom: 50px; background: #ffcc00; border: none; padding: 15px 50px; font-size: 18px; font-weight: bold; border-radius: 40px; cursor: pointer; z-index: 100; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2 style="margin:0;">PONY TCG</h2>
-        <div id="counter" style="font-size:12px;">正在初始化卡包...</div>
-    </div>
-
     <div class="stage">
-        <div id="pack" class="booster-pack" style="display:none;"></div>
+        <div id="glow" class="tear-glow"></div>
+
+        <div id="packWrapper" class="pack-wrapper" style="display:none;">
+            <div class="holographic" id="holo"></div>
+            <div class="pack-half pack-left"></div>
+            <div class="pack-half pack-right" id="packRight"></div>
+        </div>
+
         <div id="card" class="card">
             <img id="cardImage" class="card-img" src="">
-            <div id="badge" class="rarity-badge"></div>
+            <div id="badge" style="position:absolute; top:10px; right:15px; font-size:32px; font-weight:900; font-style:italic;"></div>
         </div>
     </div>
 
-    <div id="info" style="margin-bottom:10px; text-align:center; min-height:40px;">
-        <h3 id="cardName" style="margin:0; color:#ffcc00;"></h3>
-    </div>
-
-    <button id="drawBtn" class="draw-btn" onclick="preparePack()">抽一张卡！</button>
+    <button id="drawBtn" class="draw-btn" onclick="spawnPack()">抽一张卡！</button>
 
     <script>
         let cardPool = [];
+        let isDragging = false;
         let startX = 0;
+        const THRESHOLD = 180; // 撕开的临界值
 
-        // 初始化加载 CSV
         async function init() {
-            try {
-                const response = await fetch('cards.csv');
-                const text = await response.text();
-                const rows = text.split('\n').filter(r => r.trim() !== '');
-                cardPool = rows.slice(1).map(row => {
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    return { id: cols[0].trim(), name: cols[1].trim(), rarity: cols[2].trim(), desc: cols[3].trim(), img: cols[4].trim() };
-                });
-                document.getElementById('counter').innerText = `图鉴剩余: ${cardPool.length} 张`;
-            } catch (e) { alert("CSV加载失败，请检查文件"); }
+            const response = await fetch('cards.csv');
+            const text = await response.text();
+            const rows = text.split('\n').filter(r => r.trim() !== '');
+            cardPool = rows.slice(1).map(row => {
+                const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                return { id: cols[0].trim(), name: cols[1].trim(), rarity: cols[2].trim(), img: cols[4].trim() };
+            });
+            document.getElementById('drawBtn').disabled = false;
         }
 
-        // 1. 点击按钮，卡包出现
-        function preparePack() {
-            document.getElementById('drawBtn').disabled = true;
-            document.getElementById('card').style.display = 'none';
-            document.getElementById('cardName').innerText = "";
+        function spawnPack() {
+            document.getElementById('drawBtn').style.display = 'none';
+            document.getElementById('card').classList.remove('reveal');
+            const wrapper = document.getElementById('packWrapper');
+            wrapper.style.display = 'block';
+            wrapper.style.transform = 'scale(1)';
+            document.getElementById('packRight').style.transform = 'rotateY(0)';
+            document.getElementById('glow').style.opacity = '0';
+        }
+
+        // 滑动监听
+        const wrapper = document.getElementById('packWrapper');
+        const rightHalf = document.getElementById('packRight');
+        const glow = document.getElementById('glow');
+
+        const startAction = (x) => { isDragging = true; startX = x; wrapper.style.cursor = 'grabbing'; };
+        const moveAction = (x) => {
+            if (!isDragging) return;
+            let diff = x - startX;
+            if (diff < 0) diff = 0;
             
-            const pack = document.getElementById('pack');
-            pack.style.display = 'flex';
-            pack.className = 'booster-pack'; // 重置动画
-        }
+            // 跟手撕开效果：计算旋转角度和位移
+            const rotate = Math.min(diff / 2, 110); 
+            rightHalf.style.transform = `rotateY(${-rotate}deg) translateX(${diff/2}px)`;
+            
+            // 缝隙光芒随距离变亮
+            glow.style.opacity = Math.min(diff / 100, 1);
+            glow.style.width = (diff / 2) + 'px';
 
-        // 2. 滑动交互逻辑
-        const packEl = document.getElementById('pack');
-        packEl.addEventListener('touchstart', e => startX = e.touches[0].clientX);
-        packEl.addEventListener('mousedown', e => startX = e.clientX);
+            // 镭射层随滑动闪动
+            document.getElementById('holo').style.backgroundPosition = `${diff}px ${diff}px`;
 
-        packEl.addEventListener('touchend', e => handleSwipe(e.changedTouches[0].clientX));
-        packEl.addEventListener('mouseup', e => handleSwipe(e.clientX));
+            if (diff > THRESHOLD) finishTear();
+        };
 
-        function handleSwipe(endX) {
-            if (endX - startX > 50) { // 向右滑动超过50px
-                tearPack();
-            }
-        }
+        wrapper.addEventListener('mousedown', e => startAction(e.clientX));
+        window.addEventListener('mousemove', e => moveAction(e.clientX));
+        window.addEventListener('mouseup', () => isDragging = false);
 
-        // 3. 撕开动画并展示卡片
-        function tearPack() {
-            const pack = document.getElementById('pack');
-            pack.classList.add('pack-tear');
+        wrapper.addEventListener('touchstart', e => startAction(e.touches[0].clientX));
+        window.addEventListener('touchmove', e => moveAction(e.touches[0].clientX));
+        window.addEventListener('touchend', () => isDragging = false);
 
+        function finishTear() {
+            isDragging = false;
+            // 播放撕包完成动画
+            wrapper.style.transition = 'all 0.4s';
+            wrapper.style.transform = 'scale(1.2) translateY(-50px)';
+            wrapper.style.opacity = '0';
+            
             setTimeout(() => {
-                pack.style.display = 'none';
+                wrapper.style.display = 'none';
+                wrapper.style.transition = 'none';
                 showCard();
-            }, 800);
+            }, 400);
         }
 
         function showCard() {
             const res = cardPool[Math.floor(Math.random() * cardPool.length)];
-            const cardBox = document.getElementById('card');
-            
+            const cardEl = document.getElementById('card');
             document.getElementById('cardImage').src = res.img;
-            document.getElementById('badge').innerText = res.rarity;
-            document.getElementById('badge').style.color = `var(--${res.rarity.toLowerCase()})`;
-            document.getElementById('cardName').innerText = `【${res.rarity}】${res.name}`;
-            
-            cardBox.style.display = 'block';
+            const badge = document.getElementById('badge');
+            badge.innerText = res.rarity;
+            badge.style.color = res.rarity === 'UR' ? '#ff4500' : (res.rarity === 'SSR' ? '#ffd700' : '#1e90ff');
 
-            // 稀有度特殊效果
+            cardEl.classList.add('reveal');
+            
             if(['UR','HR','SSR'].includes(res.rarity)) {
-                confetti({ particleCount: 200, spread: 90, origin: { y: 0.5 } });
+                confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
             }
 
-            document.getElementById('drawBtn').disabled = false;
+            setTimeout(() => {
+                document.getElementById('drawBtn').style.display = 'block';
+                document.getElementById('drawBtn').innerText = "再抽一包！";
+            }, 1000);
         }
 
         init();
