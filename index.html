@@ -8,11 +8,10 @@
     <style>
         :root { 
             --ur: #ff4500; --hr: #ff8c00; --ssr: #ffd700; --sr: #a020f0; --r: #1e90ff; --n: #777; 
-            --bg-color: #e0f2fe; /* 浅蓝色背景 */
+            --bg-color: #e0f2fe; 
         }
         
         body { 
-            background: var(--bg-color); 
             background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
             color: #334155; font-family: -apple-system, "Helvetica Neue", sans-serif; 
             margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; touch-action: none; 
@@ -20,7 +19,6 @@
         
         .stage { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; position: relative; perspective: 1000px; }
 
-        /* 卡包引导文字 */
         .swipe-hint {
             position: absolute; top: -50px; width: 100%; text-align: center;
             color: #0369a1; font-weight: bold; font-size: 18px;
@@ -28,7 +26,6 @@
         }
         @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
 
-        /* 卡包容器 */
         #packContainer {
             width: 280px; height: 440px; 
             background-image: url('https://raw.githubusercontent.com/charlotteweng/couple-card-images/main/Package%20Cover.png');
@@ -44,7 +41,7 @@
             mix-blend-mode: overlay; pointer-events: none;
         }
 
-        /* 重点：宝可梦式纵向卡牌布局 */
+        /* --- 核心修复：卡片布局 --- */
         .card {
             width: 320px; height: 480px; background: #fff; border-radius: 16px;
             border: 6px solid #fff; position: absolute; display: none;
@@ -54,23 +51,35 @@
         }
         .card.reveal { display: block; transform: scale(1); }
 
-        /* 图片区域锁定 5:4 比例 */
+        /* 1. 锁定图片容器为 5:4 比例 */
         .card-img-container {
-            width: 290px; height: 232px; /* 5:4 比例计算结果 */
-            margin: 15px auto 10px; border: 2px solid #f1f5f9;
-            border-radius: 8px; overflow: hidden; background: #f8fafc;
+            width: 280px; height: 224px; /* 宽度 280 * 0.8 = 224 */
+            margin: 15px auto 10px; border-radius: 8px; 
+            overflow: hidden; background: #f8fafc;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid #f1f5f9;
         }
-        .card-img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* 卡片信息区 */
-        .card-content { padding: 0 18px; }
+        /* 2. 核心：object-fit 改为 contain 确保图片显示全 */
+        .card-img { 
+            width: 100%; height: 100%; 
+            object-fit: contain; /* 不裁剪，完整显示 */
+            background-color: #fff;
+        }
+
+        .card-content { padding: 0 20px; text-align: left; }
         .card-header { 
             display: flex; justify-content: space-between; align-items: center; 
             padding-bottom: 8px; border-bottom: 2px solid #f1f5f9; 
         }
         .card-name { font-size: 20px; font-weight: 800; color: #0f172a; }
         .card-rarity { font-style: italic; font-weight: 900; font-size: 26px; }
-        .card-body { margin-top: 12px; font-size: 15px; color: #64748b; line-height: 1.6; }
+        
+        /* 3. 优化描述文字排版 */
+        .card-body { 
+            margin-top: 12px; font-size: 14px; color: #64748b; 
+            line-height: 1.5; height: 90px; overflow-y: auto; 
+        }
 
         .draw-btn { 
             margin-bottom: 60px; background: #0ea5e9; color: white; border: none; 
@@ -78,7 +87,6 @@
             cursor: pointer; z-index: 100; box-shadow: 0 4px 0 #0284c7; transition: 0.2s;
         }
         .draw-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0284c7; }
-        .draw-btn:disabled { background: #cbd5e1; box-shadow: none; }
     </style>
 </head>
 <body>
@@ -110,7 +118,6 @@
         
         async function loadCSV() {
             try {
-                // 使用时间戳防止缓存，确保每次读取最新的 CSV
                 const r = await fetch('cards.csv?v=' + Date.now());
                 const t = await r.text();
                 const rows = t.trim().split('\n').filter(line => line.includes(','));
@@ -131,6 +138,7 @@
             pack.style.display = 'block';
             pack.style.opacity = '1';
             pack.style.transform = 'scale(1)';
+            pack.style.transition = 'none'; // 重置动画状态
         }
 
         let startX = 0;
@@ -139,9 +147,8 @@
         const onStart = (x) => startX = x;
         const onEnd = (x) => {
             if (x - startX > 60) {
-                // 触发撕包动画
-                pack.style.transition = '0.4s';
-                pack.style.transform = 'translateX(200px) rotate(20deg) scale(0.8)';
+                pack.style.transition = '0.4s ease-in';
+                pack.style.transform = 'translateX(300px) rotate(30deg) scale(0.7)';
                 pack.style.opacity = '0';
                 setTimeout(() => {
                     pack.style.display = 'none';
@@ -168,7 +175,12 @@
             cardEl.classList.add('reveal');
             
             if(['UR','HR','SSR'].includes(res.rarity)) {
-                confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 } });
+                confetti({ 
+                    particleCount: 200, 
+                    spread: 80, 
+                    origin: { y: 0.6 },
+                    colors: ['#ff4500', '#ffd700', '#ffffff'] 
+                });
             }
 
             setTimeout(() => {
