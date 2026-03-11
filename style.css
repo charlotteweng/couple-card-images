@@ -73,3 +73,34 @@ body {
     cursor: pointer; z-index: 100; box-shadow: 0 4px 0 #0284c7; transition: 0.2s;
 }
 .draw-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0284c7; }
+
+/* 稀有度背景色 */
+.card-front.n { background: #f0fdf4; border-color: #bbf7d0; }   /* 浅绿 */
+.card-front.r { background: #eff6ff; border-color: #bfdbfe; }   /* 浅蓝 */
+.card-front.sr { background: #faf5ff; border-color: #e9d5ff; }  /* 浅紫 */
+.card-front.ssr { background: #fffbeb; border-color: #fef3c7; } /* 浅黄 */
+.card-front.hr { background: #fff7ed; border-color: #ffedd5; }  /* 浅橘 */
+
+/* UR 特别版：华丽流光动画 */
+.card-front.ur {
+    background: linear-gradient(125deg, #fff5f5, #fffbeb, #f0f9ff, #faf5ff, #fdf2f8);
+    background-size: 400% 400%;
+    animation: ur-gradient 8s ease infinite;
+    border-color: #fda4af; /* 玫瑰金质感边框 */
+    position: relative;
+}
+
+/* UR 的流光动画定义 */
+@keyframes ur-gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* 给卡片文字区增加一点透明感，透出背景色 */
+.card-front .card-content {
+    background: rgba(255, 255, 255, 0.4);
+    margin: 5px 15px 15px;
+    padding: 10px;
+    border-radius: 10px;
+}
