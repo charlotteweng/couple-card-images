@@ -31,6 +31,13 @@ function prepareCard() {
     const b = document.getElementById('cardBadge');
     b.innerText = res.rarity;
     b.style.color = `var(--${res.rarity.toLowerCase()})`;
+
+    // 清除之前可能存在的稀有度类名
+    const cardFront = document.querySelector('.card-front');
+    cardFront.className = 'card-face card-front'; // 重置类名
+
+    // 根据稀有度添加对应的背景颜色类名 (转为小写以匹配 CSS)
+    cardFront.classList.add(res.rarity.toLowerCase());
     
     container.classList.add('show');
     setTimeout(() => { 
