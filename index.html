@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PONY TCG POCKET</title>
+    <title>Nathan × Charlotte：抽卡物语</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
         :root { 
@@ -12,7 +12,7 @@
         
         body { 
             background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
-            color: #334155; font-family: -apple-system, sans-serif; 
+            color: #334155; font-family: -apple-system, "PingFang SC", sans-serif; 
             margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; height: 100vh; touch-action: none; 
         }
         
@@ -25,7 +25,7 @@
         }
         @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-10px);} 60% {transform: translateY(-5px);} }
 
-        /* --- 3D 翻转核心容器 --- */
+        /* 3D 翻转容器 */
         .card-container {
             width: 320px; height: 480px; position: relative;
             transform-style: preserve-3d;
@@ -36,49 +36,51 @@
         .card-container.show { display: block; animation: popIn 0.5s ease-out; }
         @keyframes popIn { from { transform: scale(0) rotate(-5deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
 
-        /* 卡片共有样式（正反面） */
         .card-face {
             position: absolute; width: 100%; height: 100%;
             backface-visibility: hidden; border-radius: 18px;
-            border: 6px solid #fff; box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+            border: 6px solid #fff; box-shadow: 0 15px 50px rgba(0,0,0,0.12);
             overflow: hidden; background: #fff;
         }
 
-        /* --- 卡片背面 (原卡包封面) --- */
+        /* 卡片背面 */
         .card-back {
             background-image: url('https://raw.githubusercontent.com/charlotteweng/couple-card-images/main/Package%20Cover.png');
             background-size: cover; background-position: center;
             z-index: 2;
         }
-        .card-back::after { /* 镭射效果 */
+        .card-back::after {
             content: ''; position: absolute; inset: 0;
-            background: linear-gradient(135deg, transparent 20%, rgba(255,255,255,0.3) 50%, transparent 80%);
+            background: linear-gradient(135deg, transparent 20%, rgba(255,255,255,0.2) 50%, transparent 80%);
             mix-blend-mode: overlay;
         }
 
-        /* --- 卡片正面 --- */
+        /* 卡片正面 */
         .card-front {
             transform: rotateY(180deg);
             z-index: 1; color: #1e293b;
         }
 
+        /* 5:4 比例图片 */
         .card-img-wrapper {
-            width: 284px; height: 0; padding-top: 227.2px; /* 5:4 比例 */
+            width: 284px; height: 0; padding-top: 227.2px; 
             margin: 15px auto 10px; position: relative;
             border-radius: 8px; overflow: hidden; background: #f8fafc;
         }
         .card-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        
         .card-content { padding: 0 18px; text-align: left; }
         .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 5px; }
-        .card-name { font-size: 20px; font-weight: 800; }
+        .card-name { font-size: 19px; font-weight: 800; }
         .card-rarity { font-style: italic; font-weight: 900; font-size: 24px; }
         .card-body { margin-top: 10px; font-size: 14px; color: #64748b; line-height: 1.5; height: 110px; overflow-y: auto; }
 
         .draw-btn { 
             margin-bottom: 60px; background: #0ea5e9; color: white; border: none; 
             padding: 16px 50px; font-size: 18px; font-weight: bold; border-radius: 50px; 
-            cursor: pointer; z-index: 100; box-shadow: 0 4px 0 #0284c7;
+            cursor: pointer; z-index: 100; box-shadow: 0 4px 0 #0284c7; transition: 0.2s;
         }
+        .draw-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0284c7; }
     </style>
 </head>
 <body>
@@ -86,9 +88,7 @@
     <div class="stage">
         <div id="cardContainer" class="card-container">
             <div id="hint" class="swipe-hint">向右滑动翻面 >>></div>
-            
             <div class="card-face card-back"></div>
-            
             <div class="card-face card-front">
                 <div class="card-img-wrapper">
                     <img id="cardImage" class="card-img" src="" alt="card image">
@@ -98,13 +98,13 @@
                         <span id="cardName" class="card-name">名称</span>
                         <span id="cardBadge" class="card-rarity"></span>
                     </div>
-                    <div id="cardDesc" class="card-body">描述加载中...</div>
+                    <div id="cardDesc" class="card-body">描述载入中...</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <button id="drawBtn" class="draw-btn" onclick="prepareCard()">加载数据中...</button>
+    <button id="drawBtn" class="draw-btn" onclick="prepareCard()">加载物语中...</button>
 
     <script>
         let cardPool = [];
@@ -119,18 +119,16 @@
                     const c = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                     return { id: c[0], name: c[1], rarity: c[2], desc: c[3], img: c[4].trim() };
                 });
-                document.getElementById('drawBtn').innerText = "提取记忆卡包";
-            } catch(e) { document.getElementById('drawBtn').innerText = "加载失败"; }
+                document.getElementById('drawBtn').innerText = "抽一张卡";
+            } catch(e) { document.getElementById('drawBtn').innerText = "载入失败"; }
         }
 
-        // 1. 准备卡片（显示背面）
         function prepareCard() {
             isFlipped = false;
             document.getElementById('drawBtn').style.display = 'none';
             const container = document.getElementById('cardContainer');
             container.classList.remove('is-flipped');
             
-            // 先随机选好数据，但不显示
             const res = cardPool[Math.floor(Math.random() * cardPool.length)];
             document.getElementById('cardImage').src = res.img;
             document.getElementById('cardName').innerText = res.name;
@@ -143,10 +141,8 @@
             setTimeout(() => { document.getElementById('hint').style.opacity = '1'; }, 600);
         }
 
-        // 2. 翻转逻辑
         let startX = 0;
         const container = document.getElementById('cardContainer');
-        
         const onStart = (x) => startX = x;
         const onEnd = (x) => {
             if (isFlipped) return;
@@ -155,7 +151,6 @@
                 container.classList.add('is-flipped');
                 document.getElementById('hint').style.opacity = '0';
                 
-                // 庆祝特效
                 const rarity = document.getElementById('cardBadge').innerText;
                 if(['UR','HR','SSR'].includes(rarity)) {
                     setTimeout(() => {
@@ -165,7 +160,8 @@
                 
                 setTimeout(() => {
                     const btn = document.getElementById('drawBtn');
-                    btn.innerText = "再抽一张";
+                    // 4. 后续按钮文案升级
+                    btn.innerText = "继续抽卡";
                     btn.style.display = 'block';
                 }, 1200);
             }
