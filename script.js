@@ -57,18 +57,39 @@ const onEnd = (x) => {
         container.classList.add('is-flipped');
         document.getElementById('hint').style.opacity = '0';
         
-        const rarity = document.getElementById('cardBadge').innerText;
-        if(['UR','HR','SSR'].includes(rarity)) {
+        // 获取当前卡片的稀有度（转大写防止出错）
+        const rarity = document.getElementById('cardBadge').innerText.toUpperCase();
+
+        // 1. 【震动反馈】针对 SSR, HR, UR 触发手机短震
+        if (['SSR', 'HR', 'UR'].includes(rarity)) {
+            if (navigator.vibrate) {
+                navigator.vibrate(200); 
+            }
+        }
+
+        // 2. 【纸屑特效】从 SR 开始就有，UR 纸屑更多
+        if (['SR', 'SSR', 'HR', 'UR'].includes(rarity)) {
             setTimeout(() => {
                 confetti({ 
-                    particleCount: 150, 
+                    particleCount: rarity === 'UR' ? 300 : 150, 
                     spread: 70, 
                     origin: { y: 0.6 },
                     colors: ['#ff4500', '#ffd700', '#bae6fd'] 
                 });
             }, 400);
         }
-        
+
+        // 3. 【独立动画调用】调用独立文件 ur-effect.js 和 hr-effect.js 里的函数
+        setTimeout(() => {
+            if (rarity === 'UR' && typeof triggerURAnimation === 'function') {
+                triggerURAnimation();
+            }
+            if (rarity === 'HR' && typeof triggerHRAnimation === 'function') {
+                triggerHRAnimation();
+            }
+        }, 300);
+
+        // 4. 显示“继续抽卡”按钮
         setTimeout(() => {
             const btn = document.getElementById('drawBtn');
             btn.innerText = "继续抽卡";
